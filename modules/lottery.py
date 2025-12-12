@@ -4,8 +4,8 @@ Module de gestion du tirage au sort
 
 import discord
 import random
+import modules.config as config
 from modules.config import (
-    WIN_PROBABILITY,
     CHRISTMAS_ROLE_NAME,
     COLOR_SUCCESS,
     COLOR_FAIL,
@@ -43,7 +43,7 @@ class LotteryManager:
             return
             
         # Effectuer le tirage
-        has_won = random.random() < WIN_PROBABILITY
+        has_won = random.random() < config.WIN_PROBABILITY
         
         if has_won:
             # L'utilisateur gagne le rôle !

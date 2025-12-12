@@ -6,10 +6,8 @@ import discord
 import asyncio
 import random
 from datetime import datetime
+import modules.config as config
 from modules.config import (
-    GIFT_LIFETIME,
-    MIN_SPAWN_INTERVAL,
-    MAX_SPAWN_INTERVAL,
     GIFT_EMOJI,
     CHRISTMAS_TREE_EMOJI,
     COLOR_GIFT
@@ -34,7 +32,7 @@ class GiftManager:
             color=COLOR_GIFT,
             timestamp=datetime.now()
         )
-        embed.set_footer(text=f"Ce cadeau disparaîtra dans {GIFT_LIFETIME} secondes...")
+        embed.set_footer(text=f"Ce cadeau disparaîtra dans {config.GIFT_LIFETIME} secondes...")
         
         # Créer le bouton
         view = GiftView(self)
@@ -44,7 +42,7 @@ class GiftManager:
         self.claimed_by = None
         
         # Attendre la durée de vie du cadeau
-        await asyncio.sleep(GIFT_LIFETIME)
+        await asyncio.sleep(config.GIFT_LIFETIME)
         
         # Si personne n'a récupéré le cadeau, le supprimer
         if self.claimed_by is None and self.active_gift:
@@ -83,7 +81,7 @@ class GiftManager:
         
         while self.is_running:
             # Attendre un délai aléatoire
-            wait_time = random.randint(MIN_SPAWN_INTERVAL, MAX_SPAWN_INTERVAL)
+            wait_time = random.randint(config.MIN_SPAWN_INTERVAL, config.MAX_SPAWN_INTERVAL)
             await asyncio.sleep(wait_time)
             
             # Faire apparaître un cadeau
@@ -99,7 +97,7 @@ class GiftView(discord.ui.View):
     """Vue contenant le bouton pour récupérer le cadeau"""
     
     def __init__(self, gift_manager: GiftManager):
-        super().__init__(timeout=GIFT_LIFETIME)
+        super().__init__(timeout=config.GIFT_LIFETIME)
         self.gift_manager = gift_manager
         
     @discord.ui.button(label="Récupérer le cadeau !", style=discord.ButtonStyle.success, emoji=GIFT_EMOJI)
