@@ -33,7 +33,9 @@ class ChristmasBot(commands.Bot):
         print("Configuration du bot...")
         self.gift_manager = GiftManager(self)
         
-        # Synchroniser les commandes slash
+        # Synchroniser les commandes slash globalement
+        # Note: Peut prendre jusqu'à 1h pour se propager
+        # Pour sync instantané sur un serveur spécifique, voir on_ready
         await self.tree.sync()
         print("Commandes slash synchronisées !")
         
@@ -357,16 +359,32 @@ async def help_command(ctx):
         name="🔧 Admin uniquement",
         value="`/start` ou `!start` - Démarrer le jeu\n"
               "`/stop` ou `!stop` - Arrêter le jeu\n"
-              "`/config` - Configurer le jeu",
+              "`/config` - Configurer le jeu\n"
+              "`!sync` - Synchroniser les commandes slash",
         inline=False
     )
     
     await ctx.send(embed=embed)
 
 
+@bot.command(name='sync')
+@commands.has_permissions(administrator=True)
+async def sync_commands(ctx):
+    """Synchronise les commandes slash pour ce serveur (admin uniquement)"""
+    try:
+        # Synchroniser pour le serveur actuel
+        guild = ctx.guild
+        bot.tree.copy_global_to(guild=guild)
+        synced = await bot.tree.sync(guild=guild)
+        await ctx.send(f"✅ {len(synced)} commandes slash synchronisées pour ce serveur ! Elles sont maintenant disponibles.")
+    except Exception as e:
+        await ctx.send(f"❌ Erreur lors de la synchronisation : {e}")
+
+
 # Gestion des erreurs
 @start_game.error
 @stop_game.error
+@sync_commands.error
 async def permission_error(ctx, error):
     """Gère les erreurs de permission"""
     if isinstance(error, commands.MissingPermissions):
