@@ -1,0 +1,73 @@
+"""
+Module contenant les fun facts sur Noël et les fêtes de fin d'année
+"""
+
+import random
+
+FUN_FACTS = [
+    "🎅 Le Père Noël n'a pas toujours été habillé en rouge ! C'est Coca-Cola qui a popularisé cette image dans les années 1930.",
+    "🦌 Les rennes du Père Noël sont tous des femelles ! Les mâles perdent leurs bois en hiver.",
+    "🎄 Le sapin de Noël le plus haut du monde mesurait 67 mètres et se trouvait à Seattle en 1950.",
+    "❄️ Chaque flocon de neige est unique et possède exactement 6 branches.",
+    "🎁 La tradition d'offrir des cadeaux à Noël remonte aux Romains qui échangeaient des présents lors des Saturnales.",
+    "🔔 'Jingle Bells' a été la première chanson jouée dans l'espace en 1965 par les astronautes de Gemini 6.",
+    "🌟 En Islande, il existe 13 Pères Noël appelés les Yule Lads qui visitent les enfants les 13 nuits précédant Noël.",
+    "🍪 Aux États-Unis, on laisse des cookies et du lait au Père Noël, mais en Irlande, on lui laisse une Guinness !",
+    "🎵 'Douce Nuit' a été traduite dans plus de 300 langues différentes.",
+    "🕯️ Le calendrier de l'Avent trouve son origine en Allemagne au 19ème siècle.",
+    "🎅 Le vrai Saint Nicolas était un évêque turc du 4ème siècle connu pour sa générosité.",
+    "🎄 Les Allemands ont été les premiers à décorer des sapins de Noël au 16ème siècle.",
+    "⛄ Le bonhomme de neige le plus grand du monde mesurait 37 mètres et a été construit dans le Maine en 2008.",
+    "🎁 Les Japonais ont pour tradition de manger du KFC à Noël depuis une campagne marketing réussie dans les années 1970.",
+    "🌍 En Australie, Noël tombe en plein été et beaucoup de gens vont à la plage le 25 décembre !",
+    "🎊 Le jour de l'An n'a pas toujours été le 1er janvier. En France, il était célébré le 1er avril jusqu'en 1564.",
+    "🥂 En Espagne, on mange 12 grains de raisin à minuit le 31 décembre, un pour chaque coup de cloche.",
+    "🎆 Les premiers feux d'artifice ont été inventés en Chine au 7ème siècle.",
+    "🍾 Une bouteille de champagne contient environ 49 millions de bulles !",
+    "🎉 À Édimbourg, le réveillon du Nouvel An s'appelle 'Hogmanay' et est célébré pendant 3 jours.",
+    "🌃 Times Square à New York attire plus d'un million de personnes chaque 31 décembre.",
+    "❄️ En Russie, le Père Noël s'appelle 'Ded Moroz' (Père Gel) et est accompagné de sa petite-fille Snegurochka.",
+    "🎄 Le gui est une plante parasite qui pousse sur les arbres et était considérée comme sacrée par les druides.",
+    "🕰️ La tradition de la bûche de Noël remonte au Moyen Âge où l'on brûlait une vraie bûche pendant 12 jours.",
+    "🎅 En Finlande, on pense que le Père Noël vit en Laponie, dans une région appelée Korvatunturi.",
+    "🎁 Le Boxing Day (26 décembre) tire son nom de la tradition de donner des boîtes-cadeaux aux employés.",
+    "🌟 L'étoile sur le sapin de Noël représente l'étoile de Bethléem qui a guidé les Rois Mages.",
+    "🔔 Les cloches de Noël symbolisent la joie et étaient utilisées pour éloigner les mauvais esprits.",
+    "🍷 Le vin chaud épicé (Glühwein) est une tradition de Noël qui remonte à l'époque romaine.",
+    "🎊 En Écosse, le premier visiteur de l'année (First Footer) apporte chance ou malchance selon ses caractéristiques.",
+    "🎅 Le Père Noël reçoit plus de 8 millions de lettres chaque année au Canada, avec sa propre adresse postale : H0H 0H0 !",
+    "🎄 La chanson 'All I Want for Christmas Is You' de Mariah Carey rapporte environ 3 millions de dollars par an.",
+    "🔔 'Vive le Vent' est en réalité une chanson américaine ('Jingle Bells') créée pour Thanksgiving, pas Noël !",
+    "🎁 Les Grecs lancent leurs vieilles chaussures par la fenêtre le soir du Nouvel An pour porter chance.",
+    "⛄ En Norvège, on cache tous les balais la veille de Noël car on pense que les sorcières les volent cette nuit-là.",
+    "🎉 Au Danemark, on casse de la vaisselle sur les portes de ses amis le 31 décembre. Plus il y a de débris, plus on est populaire !",
+    "🥂 Les Brésiliens portent des sous-vêtements blancs le soir du Nouvel An pour attirer la paix et le bonheur.",
+    "🎆 À Berlin, plus de 1 million de personnes se rassemblent devant la Porte de Brandebourg pour le Nouvel An.",
+    "🍾 Les Français consomment environ 160 millions de bouteilles de champagne pendant les fêtes de fin d'année.",
+    "🎅 La lettre la plus longue au Père Noël faisait 32 mètres de long et a été écrite par des enfants en Grèce.",
+    "❄️ Le record de la plus grande bataille de boules de neige a réuni 7 681 participants à Seattle en 2013.",
+    "🎄 En Catalogne, on décore un 'Caga Tió' (bûche catalane) qui 'fait caca' des cadeaux quand on le frappe avec un bâton !",
+    "🔔 Le carillon de Big Ben à Londres sonne 13 fois à minuit le 31 décembre pour accueillir la nouvelle année.",
+    "🎁 En Italie, on porte de la lingerie rouge le soir du Nouvel An pour attirer l'amour et la chance.",
+    "🌟 La tradition du baiser sous le gui vient des druides qui croyaient que cette plante avait des pouvoirs magiques.",
+    "🎊 En Colombie, certaines personnes courent autour du pâté de maisons avec une valise le 31 décembre pour s'assurer de voyager dans l'année.",
+    "🥂 Les Allemands font fondre du plomb et le versent dans l'eau froide le 31 décembre pour prédire l'avenir selon la forme obtenue.",
+    "🎆 Le plus grand feu d'artifice du Nouvel An dure 38 minutes et a eu lieu à Dubaï en 2014.",
+    "🎅 Au Venezuela, les gens vont à la messe de Noël en rollers dans certaines villes !",
+    "🍪 Le pain d'épices était utilisé comme médicament au Moyen Âge avant de devenir une pâtisserie de Noël.",
+    "🎄 Les premières guirlandes électriques de Noël ont été créées en 1882 par un associé de Thomas Edison.",
+    "⛄ Le mot 'Noël' vient du latin 'natalis' qui signifie 'naissance'.",
+    "🎉 En Afrique du Sud, on mange des chenilles grillées comme friandise traditionnelle de Noël.",
+    "🥂 En Russie, on célèbre le Nouvel An deux fois : le 1er janvier et le 14 janvier (selon l'ancien calendrier julien).",
+    "🎆 Sydney en Australie est l'une des premières grandes villes à célébrer le Nouvel An grâce au fuseau horaire.",
+    "🎅 Le traîneau du Père Noël devrait voyager à plus de 1 000 km/s pour livrer tous les cadeaux en une nuit !",
+    "🔔 En Pologne, on partage une hostie (oplatek) avec chaque convive avant le repas de Noël en se souhaitant du bien.",
+    "🎁 Le record du plus grand rassemblement de Pères Noël est de 18 112 personnes à Thrissur, en Inde, en 2014.",
+    "❄️ En Islande, il est de tradition d'offrir des livres à Noël et de passer la soirée à lire (Jólabókaflóð).",
+    "🎊 Au Japon, Noël est considéré comme une fête romantique, un peu comme la Saint-Valentin en Occident.",
+]
+
+
+def get_random_fun_fact():
+    """Retourne un fun fact aléatoire"""
+    return random.choice(FUN_FACTS)
