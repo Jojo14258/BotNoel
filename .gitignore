@@ -1,6 +1,9 @@
 # Fichiers de configuration
 .env
 
+# Données du bot
+data/book_winners.json
+
 # Python
 __pycache__/
 *.py[cod]

@@ -22,6 +22,7 @@ class GiftManager:
         self.active_gift = None
         self.is_running = False
         self.claimed_by = None
+        self.channel = None
         
     async def spawn_gift(self, channel):
         """Fait apparaître un cadeau dans le canal"""
@@ -78,6 +79,7 @@ class GiftManager:
     async def start_spawn_loop(self, channel):
         """Lance la boucle d'apparition des cadeaux"""
         self.is_running = True
+        self.channel = channel
         
         while self.is_running:
             # Attendre un délai aléatoire
@@ -91,6 +93,7 @@ class GiftManager:
     def stop_spawn_loop(self):
         """Arrête la boucle d'apparition des cadeaux"""
         self.is_running = False
+        self.channel = None
 
 
 class GiftView(discord.ui.View):

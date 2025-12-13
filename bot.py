@@ -23,7 +23,8 @@ class ChristmasBot(commands.Bot):
         super().__init__(
             command_prefix='!',
             intents=intents,
-            help_command=None
+            help_command=None,
+            application_id=None  # Désactive l'installation en tant qu'application utilisateur
         )
         
         self.gift_manager = None
@@ -47,7 +48,7 @@ class ChristmasBot(commands.Bot):
         
         # Définir le statut du bot
         await self.change_presence(
-            activity=discord.Game(name="🎁 Jeu de cadeaux de Noël")
+            activity=discord.Game(name="🎁 Jeu de cadeaux de Noël (taper !info)")
         )
 
 
@@ -108,14 +109,22 @@ async def slash_stop(interaction: discord.Interaction):
     gift_lifetime="Durée de vie d'un cadeau en secondes",
     min_interval="Intervalle minimum entre cadeaux (secondes)",
     max_interval="Intervalle maximum entre cadeaux (secondes)",
-    win_probability="Probabilité de gagner (0.0 à 1.0)"
+    role_probability="Probabilité de gagner le rôle (0.0 à 1.0)",
+    book_probability="Probabilité de gagner le livre (0.0 à 1.0)",
+    log_channel="Canal pour les logs des gains",
+    max_roles="Nombre max de rôles à distribuer (-1 = illimité)",
+    max_books="Nombre max de livres à distribuer (-1 = illimité)"
 )
 async def slash_config(
     interaction: discord.Interaction,
     gift_lifetime: int = None,
     min_interval: int = None,
     max_interval: int = None,
-    win_probability: float = None
+    role_probability: float = None,
+    book_probability: float = None,
+    log_channel: discord.TextChannel = None,
+    max_roles: int = None,
+    max_books: int = None
 ):
     """Configure les paramètres du jeu"""
     changes = []
@@ -141,12 +150,37 @@ async def slash_config(
         config.MAX_SPAWN_INTERVAL = max_interval
         changes.append(f"• Intervalle maximum: **{max_interval}s** ({max_interval//60} min)")
     
-    if win_probability is not None:
-        if win_probability < 0 or win_probability > 1:
+    if role_probability is not None:
+        if role_probability < 0 or role_probability > 1:
             await interaction.response.send_message("❌ La probabilité doit être entre 0.0 et 1.0.", ephemeral=True)
             return
-        config.WIN_PROBABILITY = win_probability
-        changes.append(f"• Probabilité de gagner: **{win_probability*100:.1f}%**")
+        config.ROLE_PROBABILITY = role_probability
+        changes.append(f"• Probabilité de gagner le rôle: **{role_probability*100:.1f}%**")
+    
+    if book_probability is not None:
+        if book_probability < 0 or book_probability > 1:
+            await interaction.response.send_message("❌ La probabilité doit être entre 0.0 et 1.0.", ephemeral=True)
+            return
+        config.BOOK_PROBABILITY = book_probability
+        changes.append(f"• Probabilité de gagner le livre: **{book_probability*100:.1f}%**")
+    
+    if log_channel is not None:
+        config.LOG_CHANNEL_ID = log_channel.id
+        changes.append(f"• Canal de logs: {log_channel.mention}")
+    
+    if max_roles is not None:
+        if max_roles < -1:
+            await interaction.response.send_message("❌ Le nombre doit être -1 (illimité) ou positif.", ephemeral=True)
+            return
+        config.MAX_ROLES = max_roles
+        changes.append(f"• Stock max de rôles: **{'∞' if max_roles == -1 else max_roles}**")
+    
+    if max_books is not None:
+        if max_books < -1:
+            await interaction.response.send_message("❌ Le nombre doit être -1 (illimité) ou positif.", ephemeral=True)
+            return
+        config.MAX_BOOKS = max_books
+        changes.append(f"• Stock max de livres: **{'∞' if max_books == -1 else max_books}**")
     
     if not changes:
         # Afficher la configuration actuelle
@@ -154,14 +188,30 @@ async def slash_config(
             title="⚙️ Configuration actuelle",
             color=0x3498db
         )
+        
+        log_ch = interaction.guild.get_channel(config.LOG_CHANNEL_ID) if config.LOG_CHANNEL_ID else None
+        
+        roles_remaining = config.MAX_ROLES - config.ROLES_GIVEN if config.MAX_ROLES != -1 else "∞"
+        books_remaining = config.MAX_BOOKS - config.BOOKS_GIVEN if config.MAX_BOOKS != -1 else "∞"
+        
         embed.add_field(
             name="Paramètres du jeu",
             value=f"• Durée de vie des cadeaux: **{config.GIFT_LIFETIME}s**\n"
                   f"• Intervalle minimum: **{config.MIN_SPAWN_INTERVAL}s** ({config.MIN_SPAWN_INTERVAL//60} min)\n"
                   f"• Intervalle maximum: **{config.MAX_SPAWN_INTERVAL}s** ({config.MAX_SPAWN_INTERVAL//60} min)\n"
-                  f"• Probabilité de gagner: **{config.WIN_PROBABILITY*100:.1f}%**",
+                  f"• Probabilité rôle: **{config.ROLE_PROBABILITY*100:.1f}%**\n"
+                  f"• Probabilité livre: **{config.BOOK_PROBABILITY*100:.1f}%**\n"
+                  f"• Canal de logs: {log_ch.mention if log_ch else '❌ Non configuré'}",
             inline=False
         )
+        
+        embed.add_field(
+            name="📊 Stock de récompenses",
+            value=f"🎅 Rôles: **{config.ROLES_GIVEN}** / **{'∞' if config.MAX_ROLES == -1 else config.MAX_ROLES}** (Restant: **{roles_remaining}**)\n"
+                  f"📚 Livres: **{config.BOOKS_GIVEN}** / **{'∞' if config.MAX_BOOKS == -1 else config.MAX_BOOKS}** (Restant: **{books_remaining}**)",
+            inline=False
+        )
+        
         await interaction.response.send_message(embed=embed)
     else:
         # Afficher les changements
@@ -171,6 +221,37 @@ async def slash_config(
             color=0x00FF00
         )
         await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="stock", description="Affiche le stock de récompenses restant")
+@app_commands.default_permissions(administrator=True)
+async def slash_stock(interaction: discord.Interaction):
+    """Affiche le stock de récompenses restant"""
+    roles_remaining = config.MAX_ROLES - config.ROLES_GIVEN if config.MAX_ROLES != -1 else "∞"
+    books_remaining = config.MAX_BOOKS - config.BOOKS_GIVEN if config.MAX_BOOKS != -1 else "∞"
+    
+    embed = discord.Embed(
+        title="📊 Stock de récompenses",
+        color=0x3498db
+    )
+    
+    embed.add_field(
+        name="🎅 Rôles",
+        value=f"**Distribués :** {config.ROLES_GIVEN}\n"
+              f"**Maximum :** {'∞' if config.MAX_ROLES == -1 else config.MAX_ROLES}\n"
+              f"**Restant :** {roles_remaining}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="📚 Livres",
+        value=f"**Distribués :** {config.BOOKS_GIVEN}\n"
+              f"**Maximum :** {'∞' if config.MAX_BOOKS == -1 else config.MAX_BOOKS}\n"
+              f"**Restant :** {books_remaining}",
+        inline=True
+    )
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 @bot.tree.command(name="info", description="Affiche les informations sur le jeu")
@@ -185,21 +266,24 @@ async def slash_info(interaction: discord.Interaction):
     embed.add_field(
         name="🎁 Comment jouer ?",
         value=f"Des cadeaux apparaissent aléatoirement dans le chat !\n"
-              f"Soyez le premier à cliquer sur le bouton pour tenter votre chance.",
+              f"Soyez le premier à cliquer sur le bouton pour tenter votre chance.\n"
+              f"\u26a0️ Attention : les cadeaux disparaissent rapidement s'ils ne sont pas réclamés !",
         inline=False
     )
     
-    embed.add_field(
-        name="⏱️ Timing",
-        value=f"• Cadeaux visibles pendant **{config.GIFT_LIFETIME} secondes**\n"
-              f"• Apparition toutes les **{config.MIN_SPAWN_INTERVAL//60}-{config.MAX_SPAWN_INTERVAL//60} minutes**",
-        inline=False
-    )
+    # Afficher le salon si le jeu est en cours
+    if bot.gift_manager.is_running and bot.gift_manager.channel:
+        embed.add_field(
+            name="📍 Salon des cadeaux",
+            value=f"Les cadeaux apparaissent dans {bot.gift_manager.channel.mention}",
+            inline=False
+        )
     
     embed.add_field(
         name="🎯 Récompenses",
-        value=f"• **{config.WIN_PROBABILITY*100:.0f}%** de chance de gagner un rôle spécial\n"
-              f"• Sinon, découvrez un fun fact sur Noël !",
+        value=f"• Tentez de gagner un rôle spécial de Noël ! 🎅\n"
+              f"• Ou le livre 'Guide de survie au lycée' ! 📚\n"
+              f"• Ou découvrez un fun fact sur Noël ! 🎄",
         inline=False
     )
     
@@ -233,7 +317,8 @@ async def slash_help(interaction: discord.Interaction):
         name="🔧 Commandes administrateur",
         value="</start:0> - Démarre le jeu de cadeaux\n"
               "</stop:0> - Arrête le jeu de cadeaux\n"
-              "</config:0> - Configure les paramètres du jeu",
+              "</config:0> - Configure les paramètres du jeu\n"
+              "</stock:0> - Affiche le stock de récompenses restant",
         inline=False
     )
     
@@ -300,8 +385,6 @@ async def stop_game(ctx):
 @bot.command(name='info')
 async def game_info(ctx):
     """Affiche les informations sur le jeu"""
-    from modules.config import GIFT_LIFETIME, MIN_SPAWN_INTERVAL, MAX_SPAWN_INTERVAL, WIN_PROBABILITY
-    
     embed = discord.Embed(
         title=f"{CHRISTMAS_TREE_EMOJI} Jeu de Cadeaux de Noël",
         description="Voici comment jouer :",
@@ -311,21 +394,24 @@ async def game_info(ctx):
     embed.add_field(
         name="🎁 Comment jouer ?",
         value=f"Des cadeaux apparaissent aléatoirement dans le chat !\n"
-              f"Soyez le premier à cliquer sur le bouton pour tenter votre chance.",
+              f"Soyez le premier à cliquer sur le bouton pour tenter votre chance.\n"
+              f"\u26a0️ Attention : les cadeaux disparaissent rapidement s'ils ne sont pas réclamés !",
         inline=False
     )
     
-    embed.add_field(
-        name="⏱️ Timing",
-        value=f"• Cadeaux visibles pendant **{GIFT_LIFETIME} secondes**\n"
-              f"• Apparition toutes les **{MIN_SPAWN_INTERVAL//60}-{MAX_SPAWN_INTERVAL//60} minutes**",
-        inline=False
-    )
+    # Afficher le salon si le jeu est en cours
+    if bot.gift_manager.is_running and bot.gift_manager.channel:
+        embed.add_field(
+            name="📍 Salon des cadeaux",
+            value=f"Les cadeaux apparaissent dans {bot.gift_manager.channel.mention}",
+            inline=False
+        )
     
     embed.add_field(
         name="🎯 Récompenses",
-        value=f"• **{WIN_PROBABILITY*100:.0f}%** de chance de gagner un rôle spécial\n"
-              f"• Sinon, découvrez un fun fact sur Noël !",
+        value=f"• Tentez de gagner un rôle spécial de Noël ! 🎅\n"
+              f"• Ou le livre 'Guide de survie au lycée' ! 📚\n"
+              f"• Ou découvrez un fun fact sur Noël ! 🎄",
         inline=False
     )
     
