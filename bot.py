@@ -493,9 +493,8 @@ async def stock_command(ctx):
 async def sync_commands(ctx):
     """Synchronise les commandes slash pour ce serveur (admin uniquement)"""
     try:
-        # Synchroniser pour le serveur actuel
+        # Synchroniser uniquement les commandes globales pour le serveur
         guild = ctx.guild
-        bot.tree.copy_global_to(guild=guild)
         synced = await bot.tree.sync(guild=guild)
         await ctx.send(f"✅ {len(synced)} commandes slash synchronisées pour ce serveur ! Elles sont maintenant disponibles.")
     except Exception as e:
