@@ -494,11 +494,15 @@ async def sync_commands(ctx):
     """Supprime toutes les commandes du serveur puis resynchronise"""
     try:
         guild = ctx.guild
-        # Copier les commandes globales vers le serveur
+        # Supprimer toutes les commandes spécifiques au serveur
+        bot.tree.clear_commands(guild=guild)
+        await bot.tree.sync(guild=guild)
+        await ctx.send(f"🗑️ Commandes du serveur supprimées !")
+        
+        # Maintenant copier et synchroniser les commandes globales
         bot.tree.copy_global_to(guild=guild)
-        # Synchroniser pour le serveur
         synced = await bot.tree.sync(guild=guild)
-        await ctx.send(f"✅ {len(synced)} commandes synchronisées pour ce serveur !")
+        await ctx.send(f"✅ {len(synced)} commandes resynchronisées pour ce serveur !")
     except Exception as e:
         await ctx.send(f"❌ Erreur lors de la synchronisation : {e}")
 
