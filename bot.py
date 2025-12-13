@@ -21,7 +21,7 @@ class ChristmasBot(commands.Bot):
         intents.members = True
         
         super().__init__(
-            command_prefix='!',
+            command_prefix='*',
             intents=intents,
             help_command=None,
             application_id=None  # Désactive l'installation en tant qu'application utilisateur
@@ -48,7 +48,7 @@ class ChristmasBot(commands.Bot):
         
         # Définir le statut du bot
         await self.change_presence(
-            activity=discord.Game(name="🎁 Jeu de cadeaux de Noël (taper !info)")
+            activity=discord.Game(name="🎁 Jeu de cadeaux de Noël (*info)")
         )
 
 
@@ -318,7 +318,8 @@ async def slash_help(interaction: discord.Interaction):
         value="</start:0> - Démarre le jeu de cadeaux\n"
               "</stop:0> - Arrête le jeu de cadeaux\n"
               "</config:0> - Configure les paramètres du jeu\n"
-              "</stock:0> - Affiche le stock de récompenses restant",
+              "</stock:0> - Affiche le stock de récompenses restant\n\n"
+              "**Ou utilisez le préfixe `*` :** `*start`, `*stop`, `*stock`, `*sync`",
         inline=False
     )
     
@@ -430,24 +431,58 @@ async def help_command(ctx):
     """Affiche l'aide des commandes"""
     embed = discord.Embed(
         title=f"{CHRISTMAS_TREE_EMOJI} Commandes du Bot de Noël",
-        description="Utilisez les commandes slash `/` ou préfixe `!`",
+        description="Utilisez les commandes slash `/` ou préfixe `*`",
         color=0x3498db
     )
     
     embed.add_field(
         name="🎮 Pour tous",
-        value="`/info` ou `!info` - Informations sur le jeu\n"
-              "`/help` ou `!help` - Cette aide",
+        value="`/info` ou `*info` - Informations sur le jeu\n"
+              "`/help` ou `*help` - Cette aide",
         inline=False
     )
     
     embed.add_field(
         name="🔧 Admin uniquement",
-        value="`/start` ou `!start` - Démarrer le jeu\n"
-              "`/stop` ou `!stop` - Arrêter le jeu\n"
-              "`/config` - Configurer le jeu\n"
-              "`!sync` - Synchroniser les commandes slash",
+        value="`/start` ou `*start` - Démarrer le jeu\n"
+              "`/stop` ou `*stop` - Arrêter le jeu\n"
+              "`/config` ou `*stock` - Configurer le jeu / Voir le stock\n"
+              "`*sync` - Synchroniser les commandes slash",
         inline=False
+    )
+    
+    await ctx.send(embed=embed)
+
+
+@bot.command(name='stock')
+@commands.has_permissions(administrator=True)
+async def stock_command(ctx):
+    """
+    Affiche le stock de récompenses restant
+    Commande réservée aux administrateurs
+    """
+    roles_remaining = config.MAX_ROLES - config.ROLES_GIVEN if config.MAX_ROLES != -1 else "∞"
+    books_remaining = config.MAX_BOOKS - config.BOOKS_GIVEN if config.MAX_BOOKS != -1 else "∞"
+    
+    embed = discord.Embed(
+        title="📊 Stock de récompenses",
+        color=0x3498db
+    )
+    
+    embed.add_field(
+        name="🎅 Rôles",
+        value=f"**Distribués :** {config.ROLES_GIVEN}\n"
+              f"**Maximum :** {'∞' if config.MAX_ROLES == -1 else config.MAX_ROLES}\n"
+              f"**Restant :** {roles_remaining}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="📚 Livres",
+        value=f"**Distribués :** {config.BOOKS_GIVEN}\n"
+              f"**Maximum :** {'∞' if config.MAX_BOOKS == -1 else config.MAX_BOOKS}\n"
+              f"**Restant :** {books_remaining}",
+        inline=True
     )
     
     await ctx.send(embed=embed)
@@ -470,6 +505,7 @@ async def sync_commands(ctx):
 # Gestion des erreurs
 @start_game.error
 @stop_game.error
+@stock_command.error
 @sync_commands.error
 async def permission_error(ctx, error):
     """Gère les erreurs de permission"""
