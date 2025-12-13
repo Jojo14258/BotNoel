@@ -491,12 +491,14 @@ async def stock_command(ctx):
 @bot.command(name='sync')
 @commands.has_permissions(administrator=True)
 async def sync_commands(ctx):
-    """Synchronise les commandes slash pour ce serveur (admin uniquement)"""
+    """Supprime toutes les commandes du serveur puis resynchronise"""
     try:
-        # Synchroniser uniquement les commandes globales pour le serveur
         guild = ctx.guild
+        # Supprimer toutes les commandes du serveur
+        bot.tree.clear_commands(guild=guild)
+        # Resynchroniser
         synced = await bot.tree.sync(guild=guild)
-        await ctx.send(f"✅ {len(synced)} commandes slash synchronisées pour ce serveur ! Elles sont maintenant disponibles.")
+        await ctx.send(f"✅ {len(synced)} commandes nettoyées et resynchronisées pour ce serveur !")
     except Exception as e:
         await ctx.send(f"❌ Erreur lors de la synchronisation : {e}")
 
