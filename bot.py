@@ -519,6 +519,37 @@ async def stock_command(ctx):
     await ctx.send(embed=embed)
 
 
+@bot.command(name='removerole')
+async def remove_role_command(ctx, member: discord.Member):
+    """
+    Retire le rôle de Noël à un membre
+    Usage: *removerole @membre
+    """
+    # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
+    if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
+        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
+        return
+    
+    # Chercher le rôle
+    role = discord.utils.get(ctx.guild.roles, name="🎅 Elfe de Noël 2025")
+    
+    if role is None:
+        await ctx.send("❌ Le rôle 'Elfe de Noël 2025' n'existe pas sur ce serveur.")
+        return
+    
+    if role not in member.roles:
+        await ctx.send(f"❌ {member.mention} n'a pas le rôle {role.name}.")
+        return
+    
+    try:
+        await member.remove_roles(role)
+        await ctx.send(f"✅ Le rôle {role.name} a été retiré à {member.mention} !")
+    except discord.Forbidden:
+        await ctx.send("❌ Je n'ai pas les permissions nécessaires pour retirer ce rôle.")
+    except Exception as e:
+        await ctx.send(f"❌ Erreur : {e}")
+
+
 @bot.command(name='sync')
 async def sync_commands(ctx):
     """Supprime toutes les commandes du serveur puis resynchronise"""
