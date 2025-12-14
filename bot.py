@@ -6,6 +6,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import asyncio
+import json
+import os
 from modules.config import DISCORD_TOKEN, CHANNEL_ID, CHRISTMAS_TREE_EMOJI
 from modules.gift_manager import GiftManager
 import modules.config as config
@@ -28,6 +30,23 @@ class ChristmasBot(commands.Bot):
         )
         
         self.gift_manager = None
+        self.admin_whitelist = self._load_admin_whitelist()
+        
+    def _load_admin_whitelist(self):
+        """Charge la liste des IDs Discord autorisés à utiliser les commandes admin"""
+        whitelist_file = os.path.join(os.path.dirname(__file__), "data", "admin_whitelist.json")
+        try:
+            if os.path.exists(whitelist_file):
+                with open(whitelist_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('admins', [])
+        except Exception as e:
+            print(f"Erreur lors du chargement de la whitelist admin : {e}")
+        return []
+    
+    def is_whitelisted_admin(self, user_id: int) -> bool:
+        """Vérifie si l'utilisateur est dans la whitelist admin"""
+        return user_id in self.admin_whitelist
         
     async def setup_hook(self):
         """Configuration initiale du bot"""
@@ -326,15 +345,19 @@ async def slash_help(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-# ==================== COMMANDES PRÉFIXE (!) ====================
+# ==================== COMMANDES PRÉFIXE (*) ====================
 
 @bot.command(name='start')
-@commands.has_permissions(administrator=True)
 async def start_game(ctx):
     """
     Démarre le jeu de cadeaux de Noël
-    Commande réservée aux administrateurs
+    Commande réservée aux administrateurs ou utilisateurs autorisés
     """
+    # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
+    if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
+        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
+        return
+    
     if bot.gift_manager.is_running:
         await ctx.send("🎄 Le jeu est déjà en cours !")
         return
@@ -362,12 +385,16 @@ async def start_game(ctx):
 
 
 @bot.command(name='stop')
-@commands.has_permissions(administrator=True)
 async def stop_game(ctx):
     """
     Arrête le jeu de cadeaux de Noël
-    Commande réservée aux administrateurs
+    Commande réservée aux administrateurs ou utilisateurs autorisés
     """
+    # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
+    if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
+        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
+        return
+    
     if not bot.gift_manager.is_running:
         await ctx.send("🎄 Le jeu n'est pas en cours.")
         return
@@ -455,12 +482,16 @@ async def help_command(ctx):
 
 
 @bot.command(name='stock')
-@commands.has_permissions(administrator=True)
 async def stock_command(ctx):
     """
     Affiche le stock de récompenses restant
-    Commande réservée aux administrateurs
+    Commande réservée aux administrateurs ou utilisateurs autorisés
     """
+    # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
+    if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
+        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
+        return
+    
     roles_remaining = config.MAX_ROLES - config.ROLES_GIVEN if config.MAX_ROLES != -1 else "∞"
     books_remaining = config.MAX_BOOKS - config.BOOKS_GIVEN if config.MAX_BOOKS != -1 else "∞"
     
@@ -489,9 +520,13 @@ async def stock_command(ctx):
 
 
 @bot.command(name='sync')
-@commands.has_permissions(administrator=True)
 async def sync_commands(ctx):
     """Supprime toutes les commandes du serveur puis resynchronise"""
+    # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
+    if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
+        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
+        return
+    
     try:
         guild = ctx.guild
         # Supprimer toutes les commandes spécifiques au serveur
@@ -507,15 +542,7 @@ async def sync_commands(ctx):
         await ctx.send(f"❌ Erreur lors de la synchronisation : {e}")
 
 
-# Gestion des erreurs
-@start_game.error
-@stop_game.error
-@stock_command.error
-@sync_commands.error
-async def permission_error(ctx, error):
-    """Gère les erreurs de permission"""
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
+# Pas besoin de gestion d'erreur de permissions car on vérifie manuellement
 
 
 def main():
