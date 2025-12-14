@@ -26,6 +26,10 @@ class GiftManager:
         
     async def spawn_gift(self, channel):
         """Fait apparaître un cadeau dans le canal"""
+        # Ne pas spawner si un cadeau est déjà actif
+        if self.active_gift is not None:
+            return
+        
         # Créer l'embed du cadeau
         embed = discord.Embed(
             title=f"{GIFT_EMOJI} Un cadeau sauvage apparaît ! {GIFT_EMOJI}",
