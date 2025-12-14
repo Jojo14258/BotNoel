@@ -22,7 +22,7 @@ class GiftManager:
         self.active_gift = None
         self.is_running = False
         self.claimed_by = None
-        self.channel = None
+        self.channels = []  # Liste des salons pour les cadeaux
         
     async def spawn_gift(self, channel):
         """Fait apparaître un cadeau dans le canal"""
@@ -76,24 +76,34 @@ class GiftManager:
             
         return interaction.user
         
-    async def start_spawn_loop(self, channel):
-        """Lance la boucle d'apparition des cadeaux"""
+    async def start_spawn_loop(self, channels):
+        """
+        Lance la boucle d'apparition des cadeaux
+        Args:
+            channels: Un seul canal (TextChannel) ou une liste de canaux
+        """
         self.is_running = True
-        self.channel = channel
+        
+        # Convertir en liste si c'est un seul canal
+        if not isinstance(channels, list):
+            channels = [channels]
+        
+        self.channels = channels
         
         while self.is_running:
             # Attendre un délai aléatoire
             wait_time = random.randint(config.MIN_SPAWN_INTERVAL, config.MAX_SPAWN_INTERVAL)
             await asyncio.sleep(wait_time)
             
-            # Faire apparaître un cadeau
-            if self.is_running:
-                await self.spawn_gift(channel)
+            # Faire apparaître un cadeau dans un canal aléatoire
+            if self.is_running and self.channels:
+                random_channel = random.choice(self.channels)
+                await self.spawn_gift(random_channel)
                 
     def stop_spawn_loop(self):
         """Arrête la boucle d'apparition des cadeaux"""
         self.is_running = False
-        self.channel = None
+        self.channels = []
 
 
 class GiftView(discord.ui.View):

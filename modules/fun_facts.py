@@ -65,6 +65,22 @@ FUN_FACTS = [
     "🎁 Le record du plus grand rassemblement de Pères Noël est de 18 112 personnes à Thrissur, en Inde, en 2014.",
     "❄️ En Islande, il est de tradition d'offrir des livres à Noël et de passer la soirée à lire (Jólabókaflóð).",
     "🎊 Au Japon, Noël est considéré comme une fête romantique, un peu comme la Saint-Valentin en Occident.",
+    "🎄 En France, 6 millions de sapins de Noël sont vendus chaque année, dont 80% sont naturels.",
+    "🎅 Le Père Noël distribuerait théoriquement 822 visites par seconde pour livrer tous les enfants dans le monde !",
+    "🎶 La chanson 'Last Christmas' de Wham! rapporte environ 400 000£ par an en droits d'auteur.",
+    "🍾 En Suède, on regarde Donald Duck à la télévision tous les 24 décembre à 15h depuis 1960 !",
+    "🎁 Le marché de Noël le plus ancien du monde se trouve à Strasbourg, France, depuis 1570.",
+    "❄️ Les États-Unis utilisent environ 150 millions de sapins de Noël chaque année.",
+    "🎆 Le feu d'artifice du Nouvel An à Dubaï a coûté 6 millions de dollars en 2014.",
+    "🥂 En Équateur, on brûle des mannequins représentant l'année passée à minuit le 31 décembre.",
+    "🎅 Le Père Noël a été interdit en URSS pendant la période communiste et remplacé par 'Grand-Père Gel'.",
+    "🎄 La Corée du Sud célèbre Noël comme jour férié, mais moins de 30% de la population est chrétienne.",
+    "🍾 En Autriche, on jette du plomb fondu dans l'eau le 31 décembre pour prédire l'avenir selon la forme.",
+    "🎁 Les Américains dépensent en moyenne 1 000$ par personne pour les cadeaux de Noël.",
+    "🎆 La tour Eiffel accueille environ 1 million de visiteurs pendant les fêtes de fin d'année.",
+    "🎅 En Grèce, certains croient que des gobelins méchants (Kallikantzaroi) sortent pendant les 12 jours de Noël.",
+    "❄️ Le plus grand bonhomme de neige jamais construit pesait plus de 6 000 tonnes !",
+    "🍾 En Chine, on offre des pommes la veille de Noël car 'pomme' se dit 'ping guo' qui ressemble à 'paix'.",
 ]
 
 

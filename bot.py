@@ -69,6 +69,21 @@ class ChristmasBot(commands.Bot):
         await self.change_presence(
             activity=discord.Game(name="🎁 Jeu de cadeaux de Noël (*info)")
         )
+    
+    async def on_command_error(self, ctx, error):
+        """Gère les erreurs de commandes"""
+        if isinstance(error, commands.CommandNotFound):
+            await ctx.send(f"❌ Commande inconnue ! Tapez `*help` pour voir la liste des commandes disponibles.")
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send(f"❌ Argument manquant ! Tapez `*help` pour voir comment utiliser cette commande.")
+        elif isinstance(error, commands.BadArgument):
+            await ctx.send(f"❌ Argument invalide ! Tapez `*help` pour voir comment utiliser cette commande.")
+        elif isinstance(error, commands.MissingPermissions):
+            await ctx.send("❌ Vous n'avez pas les permissions nécessaires pour utiliser cette commande !")
+        else:
+            # Erreur inattendue, la logger
+            print(f"Erreur inattendue: {error}")
+            await ctx.send(f"❌ Une erreur est survenue. Tapez `*help` pour voir les commandes disponibles.")
 
 
 # Créer l'instance du bot
@@ -79,22 +94,36 @@ bot = ChristmasBot()
 
 @bot.tree.command(name="start", description="Démarre le jeu de cadeaux de Noël")
 @app_commands.default_permissions(administrator=True)
-@app_commands.describe(channel="Canal où faire apparaître les cadeaux (optionnel)")
-async def slash_start(interaction: discord.Interaction, channel: discord.TextChannel = None):
+@app_commands.describe(channels="Canaux où faire apparaître les cadeaux (séparés par des espaces)")
+async def slash_start(interaction: discord.Interaction, channels: str = None):
     """Démarre le jeu de cadeaux de Noël"""
     if bot.gift_manager.is_running:
         await interaction.response.send_message("🎄 Le jeu est déjà en cours !", ephemeral=True)
         return
     
-    # Utiliser le canal spécifié, sinon le canal configuré, sinon le canal actuel
-    target_channel = channel or bot.get_channel(CHANNEL_ID) or interaction.channel
+    # Parser les canaux mentionnés
+    target_channels = []
+    if channels:
+        # Extraire les IDs des canaux mentionnés
+        import re
+        channel_ids = re.findall(r'<#(\d+)>', channels)
+        for ch_id in channel_ids:
+            ch = interaction.guild.get_channel(int(ch_id))
+            if ch and isinstance(ch, discord.TextChannel):
+                target_channels.append(ch)
+    
+    # Si aucun canal spécifié, utiliser le canal configuré ou actuel
+    if not target_channels:
+        default_ch = bot.get_channel(CHANNEL_ID) or interaction.channel
+        target_channels = [default_ch]
     
     # Démarrer la boucle d'apparition des cadeaux
-    bot.loop.create_task(bot.gift_manager.start_spawn_loop(target_channel))
+    bot.loop.create_task(bot.gift_manager.start_spawn_loop(target_channels))
     
+    channels_mention = ", ".join([ch.mention for ch in target_channels])
     embed = discord.Embed(
         title=f"{CHRISTMAS_TREE_EMOJI} Jeu de Noël démarré !",
-        description=f"Les cadeaux vont commencer à apparaître dans {target_channel.mention} !\n\n"
+        description=f"Les cadeaux vont commencer à apparaître dans : {channels_mention} !\n\n"
                    f"🎁 Soyez rapides pour les récupérer !\n"
                    f"⭐ Tentez de gagner le rôle spécial de Noël !",
         color=0x00FF00
@@ -242,32 +271,66 @@ async def slash_config(
         await interaction.response.send_message(embed=embed)
 
 
-@bot.tree.command(name="stock", description="Affiche le stock de récompenses restant")
+@bot.tree.command(name="gameconfig", description="Affiche la configuration actuelle du jeu")
 @app_commands.default_permissions(administrator=True)
-async def slash_stock(interaction: discord.Interaction):
-    """Affiche le stock de récompenses restant"""
-    roles_remaining = config.MAX_ROLES - config.ROLES_GIVEN if config.MAX_ROLES != -1 else "∞"
-    books_remaining = config.MAX_BOOKS - config.BOOKS_GIVEN if config.MAX_BOOKS != -1 else "∞"
-    
+async def slash_gameconfig(interaction: discord.Interaction):
+    """Affiche la configuration actuelle du jeu"""
     embed = discord.Embed(
-        title="📊 Stock de récompenses",
+        title="⚙️ Configuration du jeu",
         color=0x3498db
     )
     
+    # Paramètres du jeu
     embed.add_field(
-        name="🎅 Rôles",
-        value=f"**Distribués :** {config.ROLES_GIVEN}\n"
-              f"**Maximum :** {'∞' if config.MAX_ROLES == -1 else config.MAX_ROLES}\n"
-              f"**Restant :** {roles_remaining}",
-        inline=True
+        name="🎮 Paramètres des cadeaux",
+        value=f"• Durée de vie : **{config.GIFT_LIFETIME}s**\n"
+              f"• Intervalle min : **{config.MIN_SPAWN_INTERVAL}s** ({config.MIN_SPAWN_INTERVAL//60} min)\n"
+              f"• Intervalle max : **{config.MAX_SPAWN_INTERVAL}s** ({config.MAX_SPAWN_INTERVAL//60} min)",
+        inline=False
     )
     
+    # Probabilités
     embed.add_field(
-        name="📚 Livres",
-        value=f"**Distribués :** {config.BOOKS_GIVEN}\n"
-              f"**Maximum :** {'∞' if config.MAX_BOOKS == -1 else config.MAX_BOOKS}\n"
-              f"**Restant :** {books_remaining}",
-        inline=True
+        name="🎲 Probabilités",
+        value=f"• Rôle : **{config.ROLE_PROBABILITY*100:.1f}%**\n"
+              f"• Livre : **{config.BOOK_PROBABILITY*100:.1f}%**",
+        inline=False
+    )
+    
+    # Stock
+    roles_remaining = config.MAX_ROLES - config.ROLES_GIVEN if config.MAX_ROLES != -1 else "∞"
+    books_remaining = config.MAX_BOOKS - config.BOOKS_GIVEN if config.MAX_BOOKS != -1 else "∞"
+    
+    embed.add_field(
+        name="📊 Stock de récompenses",
+        value=f"🎅 Rôles: **{config.ROLES_GIVEN}** / **{'∞' if config.MAX_ROLES == -1 else config.MAX_ROLES}** (Restant: **{roles_remaining}**)\n"
+              f"📚 Livres: **{config.BOOKS_GIVEN}** / **{'∞' if config.MAX_BOOKS == -1 else config.MAX_BOOKS}** (Restant: **{books_remaining}**)",
+        inline=False
+    )
+    
+    # Canal de logs
+    log_ch = interaction.guild.get_channel(config.LOG_CHANNEL_ID) if config.LOG_CHANNEL_ID else None
+    embed.add_field(
+        name="📝 Canal de logs",
+        value=log_ch.mention if log_ch else "❌ Non configuré",
+        inline=False
+    )
+    
+    # Salons actifs
+    if bot.gift_manager.is_running and bot.gift_manager.channels:
+        channels_mention = ", ".join([ch.mention for ch in bot.gift_manager.channels])
+        embed.add_field(
+            name="📍 Salon(s) actif(s)",
+            value=channels_mention,
+            inline=False
+        )
+    
+    # Statut
+    status = "✅ En cours" if bot.gift_manager.is_running else "❌ Arrêté"
+    embed.add_field(
+        name="🔴 Statut du jeu",
+        value=status,
+        inline=False
     )
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -290,11 +353,12 @@ async def slash_info(interaction: discord.Interaction):
         inline=False
     )
     
-    # Afficher le salon si le jeu est en cours
-    if bot.gift_manager.is_running and bot.gift_manager.channel:
+    # Afficher les salons si le jeu est en cours
+    if bot.gift_manager.is_running and bot.gift_manager.channels:
+        channels_mention = ", ".join([ch.mention for ch in bot.gift_manager.channels])
         embed.add_field(
-            name="📍 Salon des cadeaux",
-            value=f"Les cadeaux apparaissent dans {bot.gift_manager.channel.mention}",
+            name="📍 Salon(s) des cadeaux",
+            value=f"Les cadeaux apparaissent dans : {channels_mention}",
             inline=False
         )
     
@@ -310,6 +374,12 @@ async def slash_info(interaction: discord.Interaction):
     embed.add_field(
         name="📊 Statut",
         value=status,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🛠️ Commandes admin",
+        value="Utilisez </gameconfig:0> pour voir la configuration complète du jeu",
         inline=False
     )
     
@@ -337,8 +407,8 @@ async def slash_help(interaction: discord.Interaction):
         value="</start:0> - Démarre le jeu de cadeaux\n"
               "</stop:0> - Arrête le jeu de cadeaux\n"
               "</config:0> - Configure les paramètres du jeu\n"
-              "</stock:0> - Affiche le stock de récompenses restant\n\n"
-              "**Ou utilisez le préfixe `*` :** `*start`, `*stop`, `*stock`, `*sync`",
+              "</gameconfig:0> - Affiche la configuration actuelle\n\n"
+              "**Ou utilisez le préfixe `*` :** `*start`, `*stop`, `*gameconfig`, `*removerole`, `*sync`",
         inline=False
     )
     
@@ -348,10 +418,11 @@ async def slash_help(interaction: discord.Interaction):
 # ==================== COMMANDES PRÉFIXE (*) ====================
 
 @bot.command(name='start')
-async def start_game(ctx):
+async def start_game(ctx, *channels: discord.TextChannel):
     """
     Démarre le jeu de cadeaux de Noël
     Commande réservée aux administrateurs ou utilisateurs autorisés
+    Usage: *start [#canal1 #canal2 ...]
     """
     # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
     if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
@@ -361,21 +432,23 @@ async def start_game(ctx):
     if bot.gift_manager.is_running:
         await ctx.send("🎄 Le jeu est déjà en cours !")
         return
-        
-    # Récupérer le canal configuré ou utiliser le canal actuel
-    channel_id = CHANNEL_ID if CHANNEL_ID != 0 else ctx.channel.id
-    channel = bot.get_channel(channel_id)
     
-    if channel is None:
-        await ctx.send("❌ Canal introuvable ! Vérifiez la configuration.")
-        return
-        
+    # Si aucun canal spécifié, utiliser le canal configuré ou actuel
+    target_channels = list(channels) if channels else []
+    if not target_channels:
+        default_ch = bot.get_channel(CHANNEL_ID) if CHANNEL_ID != 0 else ctx.channel
+        if default_ch is None:
+            await ctx.send("❌ Canal introuvable ! Vérifiez la configuration.")
+            return
+        target_channels = [default_ch]
+    
     # Démarrer la boucle d'apparition des cadeaux
-    bot.loop.create_task(bot.gift_manager.start_spawn_loop(channel))
+    bot.loop.create_task(bot.gift_manager.start_spawn_loop(target_channels))
     
+    channels_mention = ", ".join([ch.mention for ch in target_channels])
     embed = discord.Embed(
         title=f"{CHRISTMAS_TREE_EMOJI} Jeu de Noël démarré !",
-        description=f"Les cadeaux vont commencer à apparaître dans {channel.mention} !\n\n"
+        description=f"Les cadeaux vont commencer à apparaître dans : {channels_mention} !\n\n"
                    f"🎁 Soyez rapides pour les récupérer !\n"
                    f"⭐ Tentez de gagner le rôle spécial de Noël !",
         color=0x00FF00
@@ -427,11 +500,12 @@ async def game_info(ctx):
         inline=False
     )
     
-    # Afficher le salon si le jeu est en cours
-    if bot.gift_manager.is_running and bot.gift_manager.channel:
+    # Afficher les salons si le jeu est en cours
+    if bot.gift_manager.is_running and bot.gift_manager.channels:
+        channels_mention = ", ".join([ch.mention for ch in bot.gift_manager.channels])
         embed.add_field(
-            name="📍 Salon des cadeaux",
-            value=f"Les cadeaux apparaissent dans {bot.gift_manager.channel.mention}",
+            name="📍 Salon(s) des cadeaux",
+            value=f"Les cadeaux apparaissent dans : {channels_mention}",
             inline=False
         )
     
@@ -446,6 +520,84 @@ async def game_info(ctx):
     status = "✅ En cours" if bot.gift_manager.is_running else "❌ Arrêté"
     embed.add_field(
         name="📊 Statut",
+        value=status,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🛠️ Commandes admin",
+        value="Utilisez `*gameconfig` pour voir la configuration complète du jeu",
+        inline=False
+    )
+    
+    await ctx.send(embed=embed)
+
+
+@bot.command(name='gameconfig')
+async def gameconfig_command(ctx):
+    """
+    Affiche la configuration actuelle du jeu
+    Commande réservée aux administrateurs ou utilisateurs autorisés
+    """
+    # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
+    if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
+        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
+        return
+    
+    embed = discord.Embed(
+        title="⚙️ Configuration du jeu",
+        color=0x3498db
+    )
+    
+    # Paramètres du jeu
+    embed.add_field(
+        name="🎮 Paramètres des cadeaux",
+        value=f"• Durée de vie : **{config.GIFT_LIFETIME}s**\n"
+              f"• Intervalle min : **{config.MIN_SPAWN_INTERVAL}s** ({config.MIN_SPAWN_INTERVAL//60} min)\n"
+              f"• Intervalle max : **{config.MAX_SPAWN_INTERVAL}s** ({config.MAX_SPAWN_INTERVAL//60} min)",
+        inline=False
+    )
+    
+    # Probabilités
+    embed.add_field(
+        name="🎲 Probabilités",
+        value=f"• Rôle : **{config.ROLE_PROBABILITY*100:.1f}%**\n"
+              f"• Livre : **{config.BOOK_PROBABILITY*100:.1f}%**",
+        inline=False
+    )
+    
+    # Stock
+    roles_remaining = config.MAX_ROLES - config.ROLES_GIVEN if config.MAX_ROLES != -1 else "∞"
+    books_remaining = config.MAX_BOOKS - config.BOOKS_GIVEN if config.MAX_BOOKS != -1 else "∞"
+    
+    embed.add_field(
+        name="📊 Stock de récompenses",
+        value=f"🎅 Rôles: **{config.ROLES_GIVEN}** / **{'∞' if config.MAX_ROLES == -1 else config.MAX_ROLES}** (Restant: **{roles_remaining}**)\n"
+              f"📚 Livres: **{config.BOOKS_GIVEN}** / **{'∞' if config.MAX_BOOKS == -1 else config.MAX_BOOKS}** (Restant: **{books_remaining}**)",
+        inline=False
+    )
+    
+    # Canal de logs
+    log_ch = ctx.guild.get_channel(config.LOG_CHANNEL_ID) if config.LOG_CHANNEL_ID else None
+    embed.add_field(
+        name="📝 Canal de logs",
+        value=log_ch.mention if log_ch else "❌ Non configuré",
+        inline=False
+    )
+    
+    # Salons actifs
+    if bot.gift_manager.is_running and bot.gift_manager.channels:
+        channels_mention = ", ".join([ch.mention for ch in bot.gift_manager.channels])
+        embed.add_field(
+            name="📍 Salon(s) actif(s)",
+            value=channels_mention,
+            inline=False
+        )
+    
+    # Statut
+    status = "✅ En cours" if bot.gift_manager.is_running else "❌ Arrêté"
+    embed.add_field(
+        name="🔴 Statut du jeu",
         value=status,
         inline=False
     )
@@ -473,47 +625,11 @@ async def help_command(ctx):
         name="🔧 Admin uniquement",
         value="`/start` ou `*start` - Démarrer le jeu\n"
               "`/stop` ou `*stop` - Arrêter le jeu\n"
-              "`/config` ou `*stock` - Configurer le jeu / Voir le stock\n"
+              "`/config` - Configurer le jeu\n"
+              "`/gameconfig` ou `*gameconfig` - Voir la configuration\n"
+              "`*removerole @membre` - Retirer le rôle de Noël\n"
               "`*sync` - Synchroniser les commandes slash",
         inline=False
-    )
-    
-    await ctx.send(embed=embed)
-
-
-@bot.command(name='stock')
-async def stock_command(ctx):
-    """
-    Affiche le stock de récompenses restant
-    Commande réservée aux administrateurs ou utilisateurs autorisés
-    """
-    # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
-    if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
-        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
-        return
-    
-    roles_remaining = config.MAX_ROLES - config.ROLES_GIVEN if config.MAX_ROLES != -1 else "∞"
-    books_remaining = config.MAX_BOOKS - config.BOOKS_GIVEN if config.MAX_BOOKS != -1 else "∞"
-    
-    embed = discord.Embed(
-        title="📊 Stock de récompenses",
-        color=0x3498db
-    )
-    
-    embed.add_field(
-        name="🎅 Rôles",
-        value=f"**Distribués :** {config.ROLES_GIVEN}\n"
-              f"**Maximum :** {'∞' if config.MAX_ROLES == -1 else config.MAX_ROLES}\n"
-              f"**Restant :** {roles_remaining}",
-        inline=True
-    )
-    
-    embed.add_field(
-        name="📚 Livres",
-        value=f"**Distribués :** {config.BOOKS_GIVEN}\n"
-              f"**Maximum :** {'∞' if config.MAX_BOOKS == -1 else config.MAX_BOOKS}\n"
-              f"**Restant :** {books_remaining}",
-        inline=True
     )
     
     await ctx.send(embed=embed)
@@ -552,25 +668,45 @@ async def remove_role_command(ctx, member: discord.Member):
 
 @bot.command(name='sync')
 async def sync_commands(ctx):
-    """Supprime toutes les commandes du serveur puis resynchronise"""
+    """Synchronise les commandes slash avec le serveur"""
     # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
     if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
         await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
         return
     
     try:
-        guild = ctx.guild
-        # Supprimer toutes les commandes spécifiques au serveur
-        bot.tree.clear_commands(guild=guild)
-        await bot.tree.sync(guild=guild)
-        await ctx.send(f"🗑️ Commandes du serveur supprimées !")
+        await ctx.send("🔄 Synchronisation en cours...")
         
-        # Maintenant copier et synchroniser les commandes globales
+        guild = ctx.guild
+        
+        # Copier les commandes globales vers le serveur
         bot.tree.copy_global_to(guild=guild)
+        
+        # Synchroniser avec Discord
         synced = await bot.tree.sync(guild=guild)
-        await ctx.send(f"✅ {len(synced)} commandes resynchronisées pour ce serveur !")
+        
+        # Créer un embed avec les détails
+        embed = discord.Embed(
+            title="✅ Synchronisation réussie !",
+            description=f"**{len(synced)}** commandes slash synchronisées pour ce serveur.",
+            color=0x00FF00
+        )
+        
+        # Lister les commandes synchronisées
+        if synced:
+            commands_list = "\n".join([f"• `/{cmd.name}` - {cmd.description}" for cmd in synced])
+            embed.add_field(
+                name="📋 Commandes disponibles",
+                value=commands_list,
+                inline=False
+            )
+        
+        embed.set_footer(text="Les commandes slash sont maintenant disponibles !")
+        
+        await ctx.send(embed=embed)
+        
     except Exception as e:
-        await ctx.send(f"❌ Erreur lors de la synchronisation : {e}")
+        await ctx.send(f"❌ Erreur lors de la synchronisation : {e}\n\n**Astuce :** Assurez-vous que le bot a la permission `applications.commands`")
 
 
 # Pas besoin de gestion d'erreur de permissions car on vérifie manuellement

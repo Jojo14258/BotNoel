@@ -4,6 +4,7 @@ Module de gestion du tirage au sort
 
 import discord
 import random
+import asyncio
 import modules.config as config
 from modules.config import (
     CHRISTMAS_ROLE_NAME,
@@ -131,6 +132,13 @@ class LotteryManager:
         )
         
         await interaction.response.send_message(embed=embed)
+        
+        # Supprimer le message après 1 minute (60 secondes)
+        await asyncio.sleep(60)
+        try:
+            await interaction.delete_original_response()
+        except:
+            pass  # Ignorer si le message est déjà supprimé
     
     async def log_win(self, guild: discord.Guild, user: discord.Member, win_type: str):
         """
