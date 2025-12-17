@@ -73,17 +73,17 @@ class ChristmasBot(commands.Bot):
     async def on_command_error(self, ctx, error):
         """Gère les erreurs de commandes"""
         if isinstance(error, commands.CommandNotFound):
-            await ctx.send(f"❌ Commande inconnue ! Tapez `*help` pour voir la liste des commandes disponibles.")
+            await ctx.send(f"❌ Commande inconnue ! Tapez `*help` pour voir la liste des commandes disponibles.", delete_after=10)
         elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"❌ Argument manquant ! Tapez `*help` pour voir comment utiliser cette commande.")
+            await ctx.send(f"❌ Argument manquant ! Tapez `*help` pour voir comment utiliser cette commande.", delete_after=10)
         elif isinstance(error, commands.BadArgument):
-            await ctx.send(f"❌ Argument invalide ! Tapez `*help` pour voir comment utiliser cette commande.")
+            await ctx.send(f"❌ Argument invalide ! Tapez `*help` pour voir comment utiliser cette commande.", delete_after=10)
         elif isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ Vous n'avez pas les permissions nécessaires pour utiliser cette commande !")
+            await ctx.send("❌ Vous n'avez pas les permissions nécessaires pour utiliser cette commande !", delete_after=10)
         else:
             # Erreur inattendue, la logger
             print(f"Erreur inattendue: {error}")
-            await ctx.send(f"❌ Une erreur est survenue. Tapez `*help` pour voir les commandes disponibles.")
+            await ctx.send(f"❌ Une erreur est survenue. Tapez `*help` pour voir les commandes disponibles.", delete_after=10)
 
 
 # Créer l'instance du bot
