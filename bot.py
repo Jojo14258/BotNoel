@@ -151,6 +151,31 @@ async def slash_stop(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
+@bot.tree.command(name="reset", description="Remet à zéro les compteurs de récompenses distribuées")
+@app_commands.default_permissions(administrator=True)
+async def slash_reset(interaction: discord.Interaction):
+    """Remet à zéro les compteurs de récompenses distribuées"""
+    old_roles = config.ROLES_GIVEN
+    old_books = config.BOOKS_GIVEN
+    
+    config.ROLES_GIVEN = 0
+    config.BOOKS_GIVEN = 0
+    
+    embed = discord.Embed(
+        title="🔄 Compteurs réinitialisés",
+        description=f"Les compteurs ont été remis à zéro.\n\n"
+                   f"**Avant :**\n"
+                   f"🎅 Rôles distribués : {old_roles}\n"
+                   f"📚 Livres distribués : {old_books}\n\n"
+                   f"**Après :**\n"
+                   f"🎅 Rôles distribués : 0\n"
+                   f"📚 Livres distribués : 0",
+        color=0xFFA500
+    )
+    
+    await interaction.response.send_message(embed=embed)
+
+
 @bot.tree.command(name="config", description="Configure les paramètres du jeu")
 @app_commands.default_permissions(administrator=True)
 @app_commands.describe(
@@ -407,8 +432,9 @@ async def slash_help(interaction: discord.Interaction):
         value="</start:0> - Démarre le jeu de cadeaux\n"
               "</stop:0> - Arrête le jeu de cadeaux\n"
               "</config:0> - Configure les paramètres du jeu\n"
-              "</gameconfig:0> - Affiche la configuration actuelle\n\n"
-              "**Ou utilisez le préfixe `*` :** `*start`, `*stop`, `*gameconfig`, `*removerole`, `*sync`",
+              "</gameconfig:0> - Affiche la configuration actuelle\n"
+              "</reset:0> - Réinitialise les compteurs\n\n"
+              "**Ou utilisez le préfixe `*` :** `*start`, `*stop`, `*gameconfig`, `*reset`, `*removerole`, `*sync`",
         inline=False
     )
     
@@ -452,6 +478,38 @@ async def start_game(ctx, *channels: discord.TextChannel):
                    f"🎁 Soyez rapides pour les récupérer !\n"
                    f"⭐ Tentez de gagner le rôle spécial de Noël !",
         color=0x00FF00
+    )
+    
+    await ctx.send(embed=embed)
+
+
+@bot.command(name='reset')
+async def reset_counters(ctx):
+    """
+    Remet à zéro les compteurs de récompenses distribuées
+    Commande réservée aux administrateurs ou utilisateurs autorisés
+    """
+    # Vérifier si l'utilisateur est admin du serveur OU dans la whitelist
+    if not (ctx.author.guild_permissions.administrator or bot.is_whitelisted_admin(ctx.author.id)):
+        await ctx.send("❌ Vous devez être administrateur pour utiliser cette commande !")
+        return
+    
+    old_roles = config.ROLES_GIVEN
+    old_books = config.BOOKS_GIVEN
+    
+    config.ROLES_GIVEN = 0
+    config.BOOKS_GIVEN = 0
+    
+    embed = discord.Embed(
+        title="🔄 Compteurs réinitialisés",
+        description=f"Les compteurs ont été remis à zéro.\n\n"
+                   f"**Avant :**\n"
+                   f"🎅 Rôles distribués : {old_roles}\n"
+                   f"📚 Livres distribués : {old_books}\n\n"
+                   f"**Après :**\n"
+                   f"🎅 Rôles distribués : 0\n"
+                   f"📚 Livres distribués : 0",
+        color=0xFFA500
     )
     
     await ctx.send(embed=embed)
@@ -627,6 +685,7 @@ async def help_command(ctx):
               "`/stop` ou `*stop` - Arrêter le jeu\n"
               "`/config` - Configurer le jeu\n"
               "`/gameconfig` ou `*gameconfig` - Voir la configuration\n"
+              "`/reset` ou `*reset` - Réinitialiser les compteurs\n"
               "`*removerole @membre` - Retirer le rôle de Noël\n"
               "`*sync` - Synchroniser les commandes slash",
         inline=False
