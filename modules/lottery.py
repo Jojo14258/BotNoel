@@ -34,6 +34,9 @@ class LotteryManager:
             interaction: L'interaction Discord
             user: L'utilisateur qui a récupéré le cadeau
         """
+        # Logger l'ouverture du cadeau
+        await self.log_gift_claim(interaction.guild, user)
+        
         # Vérifier si l'utilisateur a déjà tout gagné (rôle ET livre)
         role = await self.get_or_create_role(interaction.guild)
         has_role = role in user.roles
@@ -139,6 +142,34 @@ class LotteryManager:
             await interaction.delete_original_response()
         except:
             pass  # Ignorer si le message est déjà supprimé
+    
+    async def log_gift_claim(self, guild: discord.Guild, user: discord.Member):
+        """
+        Log l'ouverture d'un cadeau dans le canal de logs
+        
+        Args:
+            guild: Le serveur Discord
+            user: L'utilisateur qui a ouvert le cadeau
+        """
+        if LOG_CHANNEL_ID == 0:
+            return  # Pas de canal de logs configuré
+        
+        log_channel = guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel is None:
+            return
+        
+        embed = discord.Embed(
+            title="🎁 Cadeau récupéré",
+            description=f"{user.mention} ({user.name}) a récupéré un cadeau !",
+            color=0xFFD700,  # Couleur or
+            timestamp=discord.utils.utcnow()
+        )
+        embed.set_thumbnail(url=user.display_avatar.url)
+        
+        try:
+            await log_channel.send(embed=embed)
+        except:
+            pass  # Ignorer les erreurs de log
     
     async def log_win(self, guild: discord.Guild, user: discord.Member, win_type: str):
         """

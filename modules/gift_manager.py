@@ -23,6 +23,7 @@ class GiftManager:
         self.is_running = False
         self.claimed_by = None
         self.channels = []  # Liste des salons pour les cadeaux
+        self._claim_lock = asyncio.Lock()  # Verrou pour éviter les claims simultanés
         
     async def spawn_gift(self, channel):
         """Fait apparaître un cadeau dans le canal"""
@@ -59,26 +60,28 @@ class GiftManager:
             
     async def claim_gift(self, interaction: discord.Interaction):
         """Gère la réclamation d'un cadeau"""
-        # Vérifier si quelqu'un a déjà réclamé ce cadeau
-        if self.claimed_by is not None:
-            await interaction.response.send_message(
-                f"Trop tard ! {self.claimed_by.mention} a déjà récupéré ce cadeau !",
-                ephemeral=True
-            )
-            return None
+        # Utiliser un verrou pour éviter les claims simultanés
+        async with self._claim_lock:
+            # Vérifier si quelqu'un a déjà réclamé ce cadeau
+            if self.claimed_by is not None:
+                await interaction.response.send_message(
+                    f"Trop tard ! {self.claimed_by.mention} a déjà récupéré ce cadeau !",
+                    ephemeral=True
+                )
+                return None
+                
+            # Marquer le cadeau comme réclamé
+            self.claimed_by = interaction.user
             
-        # Marquer le cadeau comme réclamé
-        self.claimed_by = interaction.user
-        
-        # Supprimer le message du cadeau
-        if self.active_gift:
-            try:
-                await self.active_gift.delete()
-            except discord.NotFound:
-                pass
-            self.active_gift = None
-            
-        return interaction.user
+            # Supprimer le message du cadeau
+            if self.active_gift:
+                try:
+                    await self.active_gift.delete()
+                except discord.NotFound:
+                    pass
+                self.active_gift = None
+                
+            return interaction.user
         
     async def start_spawn_loop(self, channels):
         """
